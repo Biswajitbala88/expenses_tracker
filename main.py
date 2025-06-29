@@ -1,5 +1,7 @@
 from utils import add_expense, show_expenses, summary, search_expense, edit_expense, delete_expense
+from database import init_db
 
+init_db()
 
 
 def menu():

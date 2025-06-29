@@ -1,67 +1,70 @@
 import csv
 from datetime import datetime
+from database import init_db, get_db_connection
+
 filename = 'expenses.csv'
 
 # add expense function
 def add_expense():
-    date = input("Enter date (YYYY-MM-DD): ")
-    category = input("Enter category: ")
-    amount = input("Enter amount: ")
-    note = input("Enter note: ")
+    date = input("Enter date (YYYY-MM-DD): ") or datetime.now().strftime("%Y-%m-%d")
+    category = input("Enter category: ") or "Mobile"
+    amount = input("Enter amount: ") or "1500"
+    note = input("Enter note: ") or "Buy mobile phone"
 
-    with open(filename, 'a', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow([
-            date,
-            category,
-            amount,
-            note
-        ])
+    conn, cur = get_db_connection()
+    cur.execute(
+        "INSERT INTO expenses (date, category, amount, note) VALUES (?, ?, ?, ?)",
+        (date, category, amount, note)
+    )
+    conn.commit()
+    conn.close()
 
     print("Expense added successfully!")
 
 # show expenses function
 def show_expenses():
     print("\n Show all the expenses: \n")
-
-    with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        # lists = list(reader)
-        # print(lists)
-        for row in reader:
-            print(f"Date: {row[0]}, Category: {row[1]}, Amount: {row[2]}, Note: {row[3]}")
+    conn, cur = get_db_connection()
+    cur.execute("SELECT date, category, amount, note FROM expenses")
+    rows = cur.fetchall()
+    conn.close()
+    for row in rows:
+        print(f" Date: {row['date']}, Category: {row['category']}, Amount: {row['amount']}, Note: {row['note']}")
 
 # summary function
 def summary():
     totals = {}
     total_amount = 0
-    with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        # lists = list(reader)
-        # print(lists)
-        for row in reader:
-            category = row[1]
-            amount = float(row[2])
-            totals[category] = totals.get(category, 0) + amount
-            total_amount += amount
-        print(totals.items())
-
-        for category, total in totals.items():
-            print(f"Category: {category}, Total: {total}")
-        print(f"  Total: {total_amount}") 
+    print("\n Summary of expenses: \n")
+    conn, cur = get_db_connection()
+    cur.execute("SELECT category, SUM(amount) as total FROM expenses GROUP BY category")
+    rows = cur.fetchall()
+    conn.close()
+    # print( [ dict(row) for row in rows ] )
+    print("Category Totals:")
+    for row in rows:
+        category = row['category']
+        total = row['total']
+        totals[category] = total
+        total_amount += total
+        print(f"Category: {category}, Total: {total}")
+    print(f"Total Amount Spent: {total_amount}")
 
 # search expense function
 def search_expense():
     keyword = input("Enter keyword to search: ")
     found = False
-    with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        for row in reader:
-            if keyword.lower() in row[1].lower() or keyword.lower() in row[3].lower():
-                print(f"Date: {row[0]}, Category: {row[1]}, Amount: {row[2]}, Note: {row[3]}")
-                found = True
+    conn, cur = get_db_connection()
+    cur.execute("SELECT date, category, amount, note FROM expenses")
+    rows = cur.fetchall()
+    conn.close()
+    print("\n Search results: \n")
+    for row in rows:
+        if keyword.lower() in row['category'].lower() or keyword.lower() in row['note'].lower():
+            print(f"Date: {row['date']}, Category: {row['category']}, Amount: {row['amount']}, Note: {row['note']}")
+            found = True
     if not found:
-        print("No expenses found with that keyword.")
+        print("No expenses found with that keyword.")   
 
 # edit expense function
 def edit_expense():
